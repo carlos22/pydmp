@@ -18,8 +18,8 @@ def main():
   # timestep
   delta_t = 0.001
   # start and goal of the movement (1-dim)
-  start = 0.3
-  goal = 1.5
+  start = 0
+  goal = 1.0
   # number of kernels (LWR)
   n_rfs = 20
 
@@ -38,20 +38,27 @@ def main():
 
 
   # learn DMP
-  #dmp = DiscreteDMP()
-  
+  dmp = DiscreteDMP()
+  #dmp.setup(1.1, 2.2)
+  dmp.setup(start, goal)
+  dmp.learn_batch(traj, 1.0 / delta_t)
   
 
   # reproduce DMP
-  
+  reproduced_traj = []
+  for x in range(1000):
+    #if x == 500:
+    #  dmp.goal = 4.0
+    dmp.run_step()
+    reproduced_traj.append([dmp.x, dmp.xd, dmp.xdd])
 
 
   # PLOTTING
   
-
   fig = plt.figure('min jerk traj')
   
   plot_pos_vel_acc_trajectory(fig, traj, delta_t)
+  plot_pos_vel_acc_trajectory(fig, reproduced_traj, dmp.delta_t)
   
 #  plot_time = np.arange(len(traj[:,0]))*delta_t
 #  plt.subplot(311)
