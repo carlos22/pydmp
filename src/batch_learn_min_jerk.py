@@ -10,19 +10,20 @@ from min_jerk import min_jerk_step
 from plot_tools import plot_pos_vel_acc_trajectory
 
 def main():
+  
+  # start and goal of the movement (1-dim)
+  start = 0.1
+  goal = 0.9
 
+  ####### generate min jerk traj
+  
   # duration of min jerk traj
   duration = 1.0
   
   # timestep (min jerk traj)
   delta_t = 0.001
   
-  # start and goal of the movement (1-dim)
-  start = 0.1
-  goal = 0.9
-
-
-  # generate min jerk traj
+  # array of values (pos,vel,acc)
   traj = []
   # inital values (could be start)
   t, td, tdd = start, 0, 0
@@ -70,33 +71,38 @@ def main():
 
 
   ####### PLOTTING
-  
-  fig = plt.figure('min jerk traj')
-  
-  plot_pos_vel_acc_trajectory(fig, traj, delta_t)
-  plot_pos_vel_acc_trajectory(fig, reproduced_traj, dmp.delta_t)
-  
-  plt.show()
 
-  # plot learned lwr model (compared to training data) and kernels
-  fig = plt.figure("target function and kernels")
   
-  ax = fig.add_subplot(231)
-  ax.plot(dmp.target_function_input, dmp.target_function_ouput)#, label=r'$f(s)$')
-  ax.plot(dmp.target_function_input, dmp.target_function_predicted)#, label=r'$f_predicted(s)$')
-  ax.set_xlabel(r'$s$')
-  ax.set_ylabel(r'$f(s)$')
-  #ax.legend('upper left')
+  # create figure
+  fig = plt.figure('dmp batch learn from min jerk')
+  # create axes
+  ax_pos = fig.add_subplot(231)
+  ax_vel = fig.add_subplot(232)
+  ax_acc = fig.add_subplot(233)
+    
+  # plot on the axes
+  plot_pos_vel_acc_trajectory((ax_pos, ax_vel, ax_acc), traj, delta_t, label='demonstration')
+  plot_pos_vel_acc_trajectory((ax_pos, ax_vel, ax_acc), reproduced_traj, dmp.delta_t, label='reproduction', linestyle='dashed')
   
-  ax2 = fig.add_subplot(232)
-  dmp.lwr_model.plot_kernels(ax2)
-  ax2.set_xlabel(r'$s$')
-  ax2.set_ylabel(r'$\phi(s)$')
+  # subplot for ftarget     
+  ax_ft = fig.add_subplot(234)
+  ax_ft.plot(dmp.target_function_input, dmp.target_function_ouput, linewidth=2, label=r'$f_{target}(s)$')
+  ax_ft.plot(dmp.target_function_input, dmp.target_function_predicted, '--', linewidth=2, label=r'$f_{predicted}(s)$') #dashes=(3, 3)
+  ax_ft.set_xlabel(r'$s$')
+  ax_ft.set_ylabel(r'$f(s)$')
+  ax_ft.legend()
   
-  ax3 = fig.add_subplot(233)
-  ax3.plot(s_time, s)
-  ax3.set_xlabel('Time [s]')
-  ax3.set_ylabel(r'$s$')
+  # kernels (lwr)
+  ax_kernel = fig.add_subplot(235)
+  dmp.lwr_model.plot_kernels(ax_kernel)
+  ax_kernel.set_xlabel(r'$s$')
+  ax_kernel.set_ylabel(r'$\phi(s)$')
+  
+  # canonical system
+  ax_cs = fig.add_subplot(236)
+  ax_cs.plot(s_time, s)
+  ax_cs.set_xlabel(r'$Time [s]$')
+  ax_cs.set_ylabel(r'$s$')
   
   fig.tight_layout()
   

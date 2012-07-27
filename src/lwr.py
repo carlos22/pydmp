@@ -10,7 +10,8 @@ import math
 
 class LWR(object):
   '''
-    Eager Locally Weighted Regression
+    Eager Locally Weighted Regression for one dimension.
+    Eager means there is no data stored, the local models are fit once to a fixed set of basis functions.
   '''
 
   def __init__(self, n_rfs=20, activation=0.1, cutoff=0.001, exponentially_spaced=True):
