@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-Tests for the Dynamic Movement Primitive
+Some DMP examples
 '''
 import numpy as np
 import pylab as plt
@@ -12,8 +12,8 @@ from plot_tools import plot_pos_vel_acc_trajectory
 def main():
   
   # start and goal of the movement (1-dim)
-  start = 0.1
-  goal = 0.9
+  start = 0.3
+  goal = 1.4
 
   ####### generate min jerk traj
   
