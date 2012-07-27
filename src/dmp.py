@@ -1,5 +1,4 @@
 '''
-
 Simple discrete DMP implementation
 
 Based on: 
@@ -11,6 +10,7 @@ Created on 25.07.2012
 
 import math
 import numpy as np
+from lwr import LWR
 
 class DiscreteDMP:
 
@@ -18,20 +18,20 @@ class DiscreteDMP:
 
   def __init__(self): #, method=TYPE[0], alpha=None, cutoff=0.001, k_gain=50.0, delta_t=0.001):
     
-    ## Default values for parameters
-               
-    # s_min 
-    cutoff = 0.001
-    
     ## time constants choosen for critical damping
-    # alpha (canonical system parameter)
-    self.alpha_exec = 0.01
-    self.alpha = abs(math.log(cutoff))
     
-    # spring
+    # s_min 
+    self.cutoff = 0.001
+    
+    # alpha (canonical system parameter)
+    #self.alpha = 0.01
+    self.alpha = abs(math.log(self.cutoff))
+    
+        
+    # spring term
     self.k_gain = 50.0
     
-    # damping
+    # damping term
     self.d_gain = self.k_gain / 4
 
     # time steps (for the run)
@@ -44,7 +44,7 @@ class DiscreteDMP:
     self.goal = 1.0
 
     ''' temporal scaling factor $\tau$''' 
-    self.tau = 2.0
+    self.tau = 1.0
 
     ## Transformation System
     #self.transformation_system = State()
@@ -63,30 +63,23 @@ class DiscreteDMP:
     '''current value of function f (perturbation function)'''
     self.f = 0.0
     
-    #'''$\phi$ kernels of the function f'''
-    #self.psi = np.exp(-0.5*)
-    
-    #'''weights of the function f'''
-    #self.w = []
-    
-    #self.c = 
-    #self.h =
-
+    # target function input (x) and output (y)
     self.target_function_input = None
     self.target_function_ouput = None
+    # debugging (y values after fitted lwr model)
+    self.target_function_predicted = None
 
-    from lwpr import LWPR
-    self.lwr_model = LWPR(1, 1)
+    # create LWR model and set parameters
+    self.lwr_model = LWR(activation=0.1, exponentially_spaced=True, n_rfs=20)
+    
+    #from lwpr import LWPR
+    #self.lwr_model = LWPR(1, 1)
     #self.lwr_model.init_D = 20 * np.eye(1)
     #self.lwr_model.update_D = True
     #self.lwr_model.init_alpha = 40 * np.eye(1)
     #self.lwr_model.meta = False
-    
-    #self.f_model = None
-        
-
+            
     # Canonical System
-    #self.canonical_system = State()
     self.s = 1.0 # canonical system is starting with 1.0
     self.s_time = 0.0
         
@@ -105,82 +98,108 @@ class DiscreteDMP:
     if self.target_function_input == None:
       return 0.0
     
-    #from lowess import loess_query
-    #return loess_query(x, np.mat(self.target_function_input).T, self.target_function_ouput, 0.35)
-    return self.lwr_model.predict(np.asarray([x]))[0]
+    #return self.lwr_model.predict(np.asarray([x]))[0]
+    return self.lwr_model.predict(x)
 
   def setup(self, start, goal):
     assert not self._initialized
-    # remember start position
+    # set start position
     self.start = start
+    
     # set current x to start (this is only a good idea if we not already started the dmp, which is the case for setup)
     self.x = start
-
+    
+    # set goal
     self.goal = goal
     self._initialized = True
 
   def _create_training_set(self, trajectory, frequency=1000):
-    
-    # get goal and start from trajectory
-    start = trajectory[0][0]
-    goal = trajectory[-1][0]
-    tau = 1.0 # scaling factor for learning is always 1
-    
-    # the target function (transformation system solved for f, and plugged in y for x)
-    ft = lambda y, yd, ydd: ((-1 * self.k_gain * (goal - y) + self.d_gain * yd + tau * ydd) / (goal - start))
-    #ft = self._target_function_original
-    
-    # number of traning samples
+    '''
+      Prepares the data set for the supervised learning
+      @param trajectory: list of 3-Tuples with (pos,vel,acc) 
+    '''
+    # number of training samples
     n_samples = len(trajectory)
     
     # duration of the movement
     duration = float(n_samples) / float(frequency)
     
-    print "learn movement duration: %f" % duration
+    # set tau to duration for learning
+    tau = duration
     
-    # time step
-    dt = duration / float(n_samples) 
+    # initial goal and start obtained from trajectory
+    start = trajectory[0][0]
+    goal = trajectory[-1][0]
     
-    # evalutate function to get the target values for given training data
+    print "create training set of movement from trajectory with %i entries with duration: %f, start: %f, goal: %f" % (n_samples, duration, start, goal)
+    
+    ##### compute target function input (canonical system) [rollout]
+    
+    # compute alpha_x such that the canonical system drops
+    # below the cutoff when the trajectory has finished
+    alpha = -(math.log(self.cutoff))
+    
+    # time steps
+    dt = 1.0 / n_samples 
+    #time_steps = np.arange(1.0, 0.0, -dt) # TODO: check this!!!!!
+    time_steps = np.arange(0.0, 1.0, dt)
+    target_function_input = np.exp(-(alpha) * time_steps) #[::-1]
+    
+    ##### compute values of target function
+    
+    # the target function (transformation system solved for f, and plugged in y for x)
+    ft = lambda y, yd, ydd: ((-(self.k_gain) * (goal - y) + self.d_gain * yd + tau * ydd) / (goal - start))
+    
+    # evaluate function to get the target values for given training data
     target_function_ouput = []
-    for d in trajectory:
+    for i, d in enumerate(trajectory):
+      # compute f_target(y, yd, ydd) * s
+      print "s ", target_function_input[i], "y ", d[0], "yd ", d[1], "ydd", d[2], " ft:", ft(d[0], d[1], d[2])
       target_function_ouput.append(ft(d[0], d[1], d[2]))
-
-    # target function input (canonical system)
-    time_steps = np.arange(n_samples) * dt
-    target_function_input = np.exp(time_steps * (self.alpha * -1. / tau))
     
     return target_function_input, np.asarray(target_function_ouput)
   
   def learn_batch(self, sample_trajectory, frequency):
-    
+    '''
+     Learns the DMP by a given sample trajectory
+     @param sample_trajectory: list of tuples (pos,vel,acc)
+    '''
     assert len(sample_trajectory) > 0
     
     if len(sample_trajectory[0]) != 3:
-      # TODO: calculate xd and xdd if sample_trajectory does not contain it
-      pass
+      # TODO: calculate yd and ydd if sample_trajectory does not contain it
+      raise NotImplementedError("automatic derivation of yd and ydd not yet implemented!")
     
     # get input and output of desired target function
     target_function_input, target_function_ouput = self._create_training_set(sample_trajectory, frequency)
-    
-    print target_function_input, target_function_ouput
 
+    # save input/output of f_target
     self.target_function_input = target_function_input
     self.target_function_ouput = target_function_ouput
     
-    inM = np.asmatrix(target_function_input).T
-    outM = np.asmatrix(target_function_ouput).T
+    # learn LWR Model for this transformation system
+    self.lwr_model.learn(target_function_input, target_function_ouput)
     
-    # learn lwpr model
-    for i in range(len(target_function_input)):
-      #print "value", outM[i]
-      self.lwr_model.update(inM[i], outM[i])
+    # debugging: compute learned ft(x)
+    self.target_function_predicted = []
+    for x in target_function_input:
+      self.target_function_predicted.append(self.lwr_model.predict(x))
     
-    
-    # TODO: learn weights
+#    inM = np.asmatrix(target_function_input).T
+#    outM = np.asmatrix(target_function_ouput).T
+#    
+#    # learn lwpr model
+#    for i in range(len(target_function_input)):
+#      #print "value", outM[i]
+#      self.lwr_model.update(inM[i], outM[i])
 
   def run_step(self):
+    '''
+      runs a integration step - updates variables self.x, self.xd, self.xdd
+    '''
     assert self._initialized
+    
+    # TODO: do this after transformation system evaluation?
     
     # update s (canonical system)
     self.s = np.exp((self.alpha * -1 / self.tau) * self.s_time)
