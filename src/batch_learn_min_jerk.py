@@ -33,7 +33,6 @@ def main():
     except:
       break
     traj.append([t, td, tdd])
-  traj = np.asarray(traj)
   traj_freq = duration / delta_t
 
   ####### learn DMP
@@ -44,7 +43,7 @@ def main():
   ####### learn DMP
   
   # setup DMP with start and goal (same as for trajectory)
-  dmp.setup(start+.3, goal-.3)
+  dmp.setup(start + .3, goal - .3)
   
   
   # trajectory

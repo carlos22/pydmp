@@ -1,9 +1,5 @@
 '''
-Simple discrete DMP implementation
-
-Based on: 
-
-Created on 25.07.2012
+Simple discrete one-dimensional DMP implementation
 
 @author: Karl Glatz <glatz@hs-weingarten.de>
 '''
@@ -139,8 +135,7 @@ class DiscreteDMP:
     alpha = -(math.log(self.cutoff))
     
     # time steps
-    dt = 1.0 / n_samples 
-    #time_steps = np.arange(1.0, 0.0, -dt) # TODO: check this!!!!!
+    dt = 1.0 / n_samples
     time_steps = np.arange(0.0, 1.0, dt)
     target_function_input = np.exp(-(alpha) * time_steps) #[::-1]
     

@@ -150,6 +150,9 @@ class LWR(object):
         
       ax.plot(kernel_x, kernel_y)
 
+  def plot_linear_models(self):
+    #TODO: implement
+    pass
 
 # some basic tests
 if __name__ == '__main__':
