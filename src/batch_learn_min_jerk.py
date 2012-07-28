@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-Some DMP examples
+Simple DMP example
 '''
 import numpy as np
 import pylab as plt
@@ -44,7 +44,7 @@ def main():
   ####### learn DMP
   
   # setup DMP with start and goal (same as for trajectory)
-  dmp.setup(start, goal)
+  dmp.setup(start+.3, goal-.3)
   
   
   # trajectory

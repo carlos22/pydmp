@@ -24,10 +24,8 @@ class DiscreteDMP:
     self.cutoff = 0.001
     
     # alpha (canonical system parameter)
-    #self.alpha = 0.01
     self.alpha = abs(math.log(self.cutoff))
     
-        
     # spring term
     self.k_gain = 50.0
     
@@ -36,6 +34,8 @@ class DiscreteDMP:
 
     # time steps (for the run)
     self.delta_t = 0.001
+    
+    ## state variables 
     
     '''start position aka $x_0$'''
     self.start = 0.0
@@ -47,7 +47,6 @@ class DiscreteDMP:
     self.tau = 1.0
 
     ## Transformation System
-    #self.transformation_system = State()
     # current position, velocity, acceleration
     '''$x$ (position)'''
     self.x = 0.0
@@ -154,7 +153,7 @@ class DiscreteDMP:
     target_function_ouput = []
     for i, d in enumerate(trajectory):
       # compute f_target(y, yd, ydd) * s
-      print "s ", target_function_input[i], "y ", d[0], "yd ", d[1], "ydd", d[2], " ft:", ft(d[0], d[1], d[2])
+      #print "s ", target_function_input[i], "y ", d[0], "yd ", d[1], "ydd", d[2], " ft:", ft(d[0], d[1], d[2])
       target_function_ouput.append(ft(d[0], d[1], d[2]))
     
     return target_function_input, np.asarray(target_function_ouput)
@@ -239,7 +238,13 @@ if __name__ == '__main__':
     traj.append([dmp.x, dmp.xd, dmp.xdd])
   
   fig = plt.figure('f=0 (transformation system only)')
-  plot_pos_vel_acc_trajectory(fig, traj, dmp.delta_t)
+  ax1 = fig.add_subplot(311)
+  ax2 = fig.add_subplot(312)
+  ax3 = fig.add_subplot(313)
+  plot_pos_vel_acc_trajectory((ax1, ax2, ax3), traj, dmp.delta_t)
+  
+  fig.tight_layout()
+  
   plt.show()
 
 
