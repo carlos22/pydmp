@@ -2,11 +2,11 @@
 '''
 Simple DMP example
 '''
-import numpy as np
 import pylab as plt
+import math
 
 from dmp import DiscreteDMP
-from min_jerk import min_jerk_step
+from min_jerk import min_jerk_traj
 from plot_tools import plot_pos_vel_acc_trajectory
 
 def main():
@@ -15,36 +15,28 @@ def main():
   start = 0.3
   goal = 1.4
 
-  ####### generate min jerk traj
+  ####### generate a trajectory (minimum jerk)
   
-  # duration of min jerk traj
+  # duration
   duration = 1.0
   
-  # timestep (min jerk traj)
+  # time steps
   delta_t = 0.001
   
-  # array of values (pos,vel,acc)
-  traj = []
-  # inital values (could be start)
-  t, td, tdd = start, 0, 0
-  for i in range(int(2 * duration / delta_t)):
-    try:
-      t, td, tdd = min_jerk_step(t, td, tdd, goal, duration - i * delta_t, delta_t)
-    except:
-      break
-    traj.append([t, td, tdd])
-  traj_freq = duration / delta_t
+  # trajectory is a list of 3-tuples with (pos,vel,acc)
+  traj = min_jerk_traj(start, goal, duration, delta_t)
+  traj_freq = int(1.0 / delta_t)
 
   ####### learn DMP
+  
   dmp = DiscreteDMP()
   dmp.learn_batch(traj, traj_freq)
   
   
   ####### learn DMP
   
-  # setup DMP with start and goal (same as for trajectory)
-  dmp.setup(start + .3, goal - .3)
-  
+  # setup DMP with start and goal
+  dmp.setup(start, goal, duration)
   
   # trajectory
   reproduced_traj = []
@@ -53,7 +45,8 @@ def main():
   s = []
   s_time = []
   
-  for x in range(1000):
+  # run steps (for each point of the sample trajectory)
+  for x in xrange(int(dmp.tau / dmp.delta_t)):
     # change goal while execution
     #if x == 500:
     #  dmp.goal = 4.0

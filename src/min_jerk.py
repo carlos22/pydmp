@@ -4,6 +4,19 @@ Created on 25.07.2012
 @author: karl
 '''
 
+def min_jerk_traj(start, goal, duration, delta_t):
+  traj = []
+  # inital values
+  t, td, tdd = start, 0, 0
+  for i in range(int(2 * duration / delta_t)):
+    try:
+      t, td, tdd = min_jerk_step(t, td, tdd, goal, duration - i * delta_t, delta_t)
+    except:
+      break
+    traj.append([t, td, tdd])
+  return traj
+
+
 def min_jerk_step(x, xd, xdd, goal, tau, dt):
   #function [x,xd,xdd] = min_jerk_step(x,xd,xdd,goal,tau, dt) computes
   # the update of x,xd,xdd for the next time step dt given that we are

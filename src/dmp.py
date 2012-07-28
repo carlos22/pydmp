@@ -1,9 +1,8 @@
 '''
-Simple discrete one-dimensional DMP implementation
+Simple one-dimensional discrete DMP implementation
 
 @author: Karl Glatz <glatz@hs-weingarten.de>
 '''
-
 import math
 import numpy as np
 from lwr import LWR
@@ -39,7 +38,7 @@ class DiscreteDMP:
     '''goal position aka $g$'''
     self.goal = 1.0
 
-    ''' temporal scaling factor $\tau$''' 
+    '''movement duration: temporal scaling factor $\tau$''' 
     self.tau = 1.0
 
     ## Transformation System
@@ -96,7 +95,7 @@ class DiscreteDMP:
     #return self.lwr_model.predict(np.asarray([x]))[0]
     return self.lwr_model.predict(x)
 
-  def setup(self, start, goal):
+  def setup(self, start, goal, duration):
     assert not self._initialized
     # set start position
     self.start = start
@@ -106,9 +105,12 @@ class DiscreteDMP:
     
     # set goal
     self.goal = goal
+    
+    self.tau = duration
+    
     self._initialized = True
 
-  def _create_training_set(self, trajectory, frequency=1000):
+  def _create_training_set(self, trajectory, frequency):
     '''
       Prepares the data set for the supervised learning
       @param trajectory: list of 3-Tuples with (pos,vel,acc) 
@@ -126,7 +128,7 @@ class DiscreteDMP:
     start = trajectory[0][0]
     goal = trajectory[-1][0]
     
-    print "create training set of movement from trajectory with %i entries with duration: %f, start: %f, goal: %f" % (n_samples, duration, start, goal)
+    print "create training set of movement from trajectory with %i entries (%i hz) with duration: %f, start: %f, goal: %f" % (n_samples, frequency, duration, start, goal)
     
     ##### compute target function input (canonical system) [rollout]
     
@@ -135,9 +137,27 @@ class DiscreteDMP:
     alpha = -(math.log(self.cutoff))
     
     # time steps
-    dt = 1.0 / n_samples
-    time_steps = np.arange(0.0, 1.0, dt)
-    target_function_input = np.exp(-(alpha) * time_steps) #[::-1]
+    dt = 1.0 / n_samples # delta_t for learning
+    time = 0.0
+    target_function_input = np.zeros(n_samples)
+    for i in xrange(len(target_function_input)):
+      target_function_input[i] = math.exp(-(alpha / tau) * time) 
+      time += dt
+    
+#    import pylab as plt
+    
+#    plt.figure()
+#    plt.plot(target_function_input)
+#    plt.show()
+    
+    # vectorized:
+    #time_steps = np.arange(0, 1.0, dt)
+    #target_function_input2 = np.exp(-(alpha) * time_steps)
+    
+    #if (target_function_input == target_function_input2).all():
+    #  print "same!"
+    
+    # print "target_function_input",len(target_function_input)
     
     ##### compute values of target function
     
@@ -193,11 +213,9 @@ class DiscreteDMP:
     '''
     assert self._initialized
     
-    # TODO: do this after transformation system evaluation?
+    dt = self.delta_t 
     
-    # update s (canonical system)
-    self.s = np.exp((self.alpha * -1 / self.tau) * self.s_time)
-    self.s_time += self.delta_t
+    ### integrate transformation system   
     
     # update f(s)
     self.f = self.predict_f(self.s)
@@ -210,10 +228,16 @@ class DiscreteDMP:
     self.xd = (self._raw_xd / self.tau)
     
     # integrate (update xd with xdd)
-    self._raw_xd += self.xdd * self.delta_t
+    self._raw_xd += self.xdd * dt
     
     # integrate (update x with xd) 
-    self.x += self.xd * self.delta_t
+    self.x += self.xd * dt
+    
+    
+    # integrate canonical system
+    self.s = math.exp(-(self.alpha / self.tau) * self.s_time)
+    self.s_time += dt
+    
 
 
 if __name__ == '__main__':
@@ -223,7 +247,7 @@ if __name__ == '__main__':
   
   # only Transformation system (f=0)
   dmp = DiscreteDMP()
-  dmp.setup(1.1, 2.2)
+  dmp.setup(1.1, 2.2, 1.0)
   
   traj = []
   for x in range(1000):
@@ -232,11 +256,11 @@ if __name__ == '__main__':
     dmp.run_step()
     traj.append([dmp.x, dmp.xd, dmp.xdd])
   
-  fig = plt.figure('f=0 (transformation system only)')
-  ax1 = fig.add_subplot(311)
-  ax2 = fig.add_subplot(312)
-  ax3 = fig.add_subplot(313)
-  plot_pos_vel_acc_trajectory((ax1, ax2, ax3), traj, dmp.delta_t)
+  fig = plt.figure('f=0 (transformation system only)', figsize=(10, 3))
+  ax1 = fig.add_subplot(131)
+  ax2 = fig.add_subplot(132)
+  ax3 = fig.add_subplot(133)
+  plot_pos_vel_acc_trajectory((ax1, ax2, ax3), traj, dmp.delta_t, label='DMP $f=0$', linewidth=1)
   
   fig.tight_layout()
   
