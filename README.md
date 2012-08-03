@@ -6,4 +6,8 @@ One-dimensional discrtete dynamic movement primitive (DMP) implementation in pyt
 Requirements:
 
 * numpy 
+* matplotlib (optional - plotting)
 
+Ubuntu install shortcut:
+
+	sudo apt-get install python-numpy python-matplotlib
