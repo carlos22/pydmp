@@ -60,18 +60,18 @@ class DiscreteDMP:
     # target function input (x) and output (y)
     self.target_function_input = None
     self.target_function_ouput = None
-    # debugging (y values after fitted lwr model)
+    # debugging (y values predicted by fitted lwr model)
     self.target_function_predicted = None
 
     # create LWR model and set parameters
     self.lwr_model = LWR(activation=0.1, exponentially_spaced=True, n_rfs=20)
     
-    #from lwpr import LWPR
-    #self.lwr_model = LWPR(1, 1)
-    #self.lwr_model.init_D = 20 * np.eye(1)
-    #self.lwr_model.update_D = True
-    #self.lwr_model.init_alpha = 40 * np.eye(1)
-    #self.lwr_model.meta = False
+#    from lwpr import LWPR
+#    self.lwr_model = LWPR(1, 1)
+#    self.lwr_model.init_D = 20 * np.eye(1)
+#    self.lwr_model.update_D = True
+#    self.lwr_model.init_alpha = 40 * np.eye(1)
+#    self.lwr_model.meta = False
             
     # Canonical System
     self.s = 1.0 # canonical system is starting with 1.0
@@ -194,18 +194,20 @@ class DiscreteDMP:
     # learn LWR Model for this transformation system
     self.lwr_model.learn(target_function_input, target_function_ouput)
     
-    # debugging: compute learned ft(x)
-    self.target_function_predicted = []
-    for x in target_function_input:
-      self.target_function_predicted.append(self.lwr_model.predict(x))
     
 #    inM = np.asmatrix(target_function_input).T
 #    outM = np.asmatrix(target_function_ouput).T
-#    
 #    # learn lwpr model
 #    for i in range(len(target_function_input)):
 #      #print "value", outM[i]
 #      self.lwr_model.update(inM[i], outM[i])
+
+    # debugging: compute learned ft(x)
+    self.target_function_predicted = []
+    for x in target_function_input:
+      self.target_function_predicted.append(self.predict_f(x))      
+      
+      
 
   def run_step(self):
     '''
