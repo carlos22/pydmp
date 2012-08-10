@@ -16,12 +16,12 @@ def main():
   duration = 1.0
   
   # time steps
-  delta_t = 0.001
+  delta_t = 0.01
   
   # trajectory is a list of 3-tuples with (pos,vel,acc)
   
   # load trajectory
-  traj_pos = json.load(open("trajectory_taskspace2.json", 'r'))["x"][1000:2000]  #[6170:7170] #[4500:5500] #[1300:2300]
+  traj_pos = json.load(open("traj_full.json", 'r'))["x"][0:12000][::120]
   
   # move trajectory to start at 0
   #traj_pos = np.asarray(traj_pos) - traj_pos[0]
@@ -47,6 +47,7 @@ def main():
   ####### learn DMP
   
   # setup DMP with start and goal
+  dmp.delta_t = delta_t
   dmp.setup(start, goal, duration)
   
   # trajectory
@@ -86,7 +87,7 @@ def main():
   # plot on the axes
   #ax_pos.plot(np.arange(0,1,0.001), traj_pos)
   plot_pos_vel_acc_trajectory((ax_pos, ax_vel, ax_acc), traj, delta_t, label='demonstration')
-  #plot_pos_vel_acc_trajectory((ax_pos, ax_vel, ax_acc), reproduced_traj, dmp.delta_t, label='reproduction', linestyle='dashed')
+  plot_pos_vel_acc_trajectory((ax_pos, ax_vel, ax_acc), reproduced_traj, dmp.delta_t, label='reproduction', linestyle='dashed')
   
   fig.tight_layout()
   

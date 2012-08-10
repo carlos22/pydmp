@@ -224,10 +224,12 @@ class DiscreteDMP:
     # debugging: use raw function output (time must be 1.0)
     ftinp = list(self.target_function_input)
     ft = self.target_function_ouput[ftinp.index(self.s)]
-    f = self.predict_f(self.s)
-    
     self.f = ft
-    print f - ft
+    
+    #f = self.predict_f(self.s)
+    #self.f = f
+    
+    #print f - ft
     
     # calculate xdd (vd) according to the transformation system equation 1
     self.xdd = (self.k_gain * (self.goal - self.x) - self.d_gain * self._raw_xd + (self.goal - self.start) * self.f) / self.tau
