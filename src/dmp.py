@@ -63,6 +63,9 @@ class DiscreteDMP:
     # debugging (y values predicted by fitted lwr model)
     self.target_function_predicted = None
 
+    # do not predict f by approximated function, use values of ft directly - only works if duration is 1.0!!
+    self.use_ft = False
+
     # create LWR model and set parameters
     self.lwr_model = LWR(activation=0.1, exponentially_spaced=True, n_rfs=20)
     
@@ -173,6 +176,42 @@ class DiscreteDMP:
     
     return target_function_input, np.asarray(target_function_ouput)
   
+  @staticmethod
+  def compute_derivatives(pos_trajectory, frequency):
+    # ported from trajectory.cpp 
+    # no fucking idea why doing it this way - but hey, the results are better ^^
+    
+    add_pos_points = 4
+    #add points to start
+    for _ in range(add_pos_points):
+      first_point = pos_trajectory[0]
+      pos_trajectory.insert(0, first_point)
+      
+    # add points to the end
+    for _ in range(add_pos_points):
+      first_point = pos_trajectory[-1]
+      pos_trajectory.append(first_point)
+      
+    # derive positions
+    vel_trajectory = []
+    
+    for i  in range(len(pos_trajectory) - 4):
+      vel = (pos_trajectory[i] - (8.0 * pos_trajectory[i + 1]) + (8.0 * pos_trajectory[i + 3]) - pos_trajectory[i + 4]) / 12.0
+      vel *= frequency
+      vel_trajectory.append(vel)
+    
+    
+    # derive velocities
+    acc_trajectory = []
+    for i  in range(len(vel_trajectory) - 4):     
+      acc = (vel_trajectory[i] - (8.0 * vel_trajectory[i + 1]) + (8.0 * vel_trajectory[i + 3]) - vel_trajectory[i + 4]) / 12.0
+      acc *= frequency
+      acc_trajectory.append(acc)
+        
+    result_traj = zip(pos_trajectory[4:], vel_trajectory[2:], acc_trajectory)
+  
+    return result_traj
+  
   def learn_batch(self, sample_trajectory, frequency):
     '''
      Learns the DMP by a given sample trajectory
@@ -180,9 +219,13 @@ class DiscreteDMP:
     '''
     assert len(sample_trajectory) > 0
     
+    if isinstance(sample_trajectory[0], float):
+      # calculate yd and ydd if sample_trajectory does not contain it
+      sample_trajectory = self.compute_derivatives(sample_trajectory, frequency)
+      #raise NotImplementedError("automatic derivation of yd and ydd not yet implemented!")
+    
     if len(sample_trajectory[0]) != 3:
-      # TODO: calculate yd and ydd if sample_trajectory does not contain it
-      raise NotImplementedError("automatic derivation of yd and ydd not yet implemented!")
+      raise Exception("malformed trajectory, has to be a list with 3-tuples [(1,2,3),(4,5,6)]")
     
     # get input and output of desired target function
     target_function_input, target_function_ouput = self._create_training_set(sample_trajectory, frequency)
@@ -222,14 +265,15 @@ class DiscreteDMP:
     
     # update f(s)
     # debugging: use raw function output (time must be 1.0)
-    ftinp = list(self.target_function_input)
-    ft = self.target_function_ouput[ftinp.index(self.s)]
-    self.f = ft
+    if self.use_ft:
+      print "DEBUG: using ft without approximation"
+      ftinp = list(self.target_function_input)
+      ft = self.target_function_ouput[ftinp.index(self.s)]
+      self.f = ft
+    else:
+      f = self.predict_f(self.s)
+      self.f = f
     
-    #f = self.predict_f(self.s)
-    #self.f = f
-    
-    #print f - ft
     
     # calculate xdd (vd) according to the transformation system equation 1
     self.xdd = (self.k_gain * (self.goal - self.x) - self.d_gain * self._raw_xd + (self.goal - self.start) * self.f) / self.tau
