@@ -190,6 +190,7 @@ class DiscreteDMP:
     # save input/output of f_target
     self.target_function_input = target_function_input
     self.target_function_ouput = target_function_ouput
+    print  "target_function_ouput len: ", len(target_function_ouput)
     
     # learn LWR Model for this transformation system
     self.lwr_model.learn(target_function_input, target_function_ouput)
@@ -220,8 +221,13 @@ class DiscreteDMP:
     ### integrate transformation system   
     
     # update f(s)
-    self.f = self.predict_f(self.s)
-    #print self.f
+    # debugging: use raw function output (time must be 1.0)
+    ftinp = list(self.target_function_input)
+    ft = self.target_function_ouput[ftinp.index(self.s)]
+    f = self.predict_f(self.s)
+    
+    self.f = ft
+    print f - ft
     
     # calculate xdd (vd) according to the transformation system equation 1
     self.xdd = (self.k_gain * (self.goal - self.x) - self.d_gain * self._raw_xd + (self.goal - self.start) * self.f) / self.tau

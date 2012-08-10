@@ -3,19 +3,14 @@
 Simple DMP example (plotting)
 '''
 import pylab as plt
-import math
+import numpy as np
 
 from dmp import DiscreteDMP
-from min_jerk import min_jerk_traj
 from plot_tools import plot_pos_vel_acc_trajectory
 
-def main():
-  
-  # start and goal of the movement (1-dim)
-  start = 0.5
-  goal = 1.0
+import json
 
-  ####### generate a trajectory (minimum jerk)
+def main():
   
   # duration
   duration = 1.0
@@ -24,7 +19,23 @@ def main():
   delta_t = 0.001
   
   # trajectory is a list of 3-tuples with (pos,vel,acc)
-  traj = min_jerk_traj(start, goal, 1.0, delta_t)
+  
+  # load trajectory
+  traj_pos = json.load(open("trajectory_taskspace2.json", 'r'))["x"][1000:2000]  #[6170:7170] #[4500:5500] #[1300:2300]
+  
+  # move trajectory to start at 0
+  #traj_pos = np.asarray(traj_pos) - traj_pos[0]
+  
+  start = traj_pos[0]
+  goal = traj_pos[-1]
+  
+  traj_vel = list(np.diff(traj_pos))
+  traj_vel.insert(0, 0.0)
+  traj_acc = list(np.diff(traj_vel))
+  traj_acc.insert(0, 0.0)
+  
+  traj = np.asarray(zip(traj_pos, traj_vel, traj_acc))
+    
   traj_freq = int(1.0 / delta_t)
 
   ####### learn DMP
@@ -36,7 +47,7 @@ def main():
   ####### learn DMP
   
   # setup DMP with start and goal
-  dmp.setup(start-0.1, goal-0.1, duration)
+  dmp.setup(start, goal, duration)
   
   # trajectory
   reproduced_traj = []
@@ -73,8 +84,9 @@ def main():
   ax_acc = fig.add_subplot(133)
     
   # plot on the axes
+  #ax_pos.plot(np.arange(0,1,0.001), traj_pos)
   plot_pos_vel_acc_trajectory((ax_pos, ax_vel, ax_acc), traj, delta_t, label='demonstration')
-  plot_pos_vel_acc_trajectory((ax_pos, ax_vel, ax_acc), reproduced_traj, dmp.delta_t, label='reproduction', linestyle='dashed')
+  #plot_pos_vel_acc_trajectory((ax_pos, ax_vel, ax_acc), reproduced_traj, dmp.delta_t, label='reproduction', linestyle='dashed')
   
   fig.tight_layout()
   
