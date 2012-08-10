@@ -29,14 +29,14 @@ def main():
 
   ####### learn DMP
   
-  dmp = DiscreteDMP()
+  dmp = DiscreteDMP(True)
   dmp.learn_batch(traj, traj_freq)
   
   
   ####### learn DMP
   
   # setup DMP with start and goal
-  dmp.setup(start-0.1, goal-0.1, duration)
+  dmp.setup(start, goal, duration)
   
   # trajectory
   reproduced_traj = []

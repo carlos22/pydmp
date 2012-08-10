@@ -13,13 +13,13 @@ def main():
   duration = 1.0
   
   # adaption offset
-  adapt_offset = -0.02
+  adapt_offset = +0.02
   
   # time steps
   delta_t = 0.001
   
   # load position trajectory
-  traj_pos = json.load(open("traj_full.json", 'r'))["x"][2000:8000][::6]
+  traj_pos = json.load(open("traj_full.json", 'r'))["x"][2000:8000][::6] #[5000:8000][::3]
   
   # rest start and goal position out of trajectory
   start = traj_pos[0]
@@ -32,12 +32,12 @@ def main():
 
   ####### learn DMP
    
-  dmp = DiscreteDMP()
+  dmp = DiscreteDMP(True)
   dmp.use_ft = True
   dmp.learn_batch(traj, traj_freq)
   
   
-  dmp_adapt = DiscreteDMP()
+  dmp_adapt = DiscreteDMP(True)
   dmp_adapt.use_ft = True
   dmp_adapt.learn_batch(traj, traj_freq)
   

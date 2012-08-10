@@ -9,9 +9,7 @@ from lwr import LWR
 
 class DiscreteDMP:
 
-  #TYPE = ['original', 'improved']
-
-  def __init__(self): #, method=TYPE[0], alpha=None, cutoff=0.001, k_gain=50.0, delta_t=0.001):
+  def __init__(self, improved_version=False):
     
     ## time constants choosen for critical damping
     
@@ -51,7 +49,7 @@ class DiscreteDMP:
     self.xdd = 0.0 
 
     # internal variables
-    ''' xd not scaled by tau'''
+    ''' xd not scaled by tau aka v'''
     self._raw_xd = 0.0
     
     '''current value of function f (perturbation function)'''
@@ -68,13 +66,6 @@ class DiscreteDMP:
 
     # create LWR model and set parameters
     self.lwr_model = LWR(activation=0.1, exponentially_spaced=True, n_rfs=20)
-    
-#    from lwpr import LWPR
-#    self.lwr_model = LWPR(1, 1)
-#    self.lwr_model.init_D = 20 * np.eye(1)
-#    self.lwr_model.update_D = True
-#    self.lwr_model.init_alpha = 40 * np.eye(1)
-#    self.lwr_model.meta = False
             
     # Canonical System
     self.s = 1.0 # canonical system is starting with 1.0
@@ -83,12 +74,36 @@ class DiscreteDMP:
     # is the DMP initialized?
     self._initialized = False
     
-#  def _transformation_system_original(self, g, x, raw_xd, start, goal, f, s=0):
-#    return (self.k_gain * (goal - x) - self.d_gain * raw_xd + (goal - start) * f) / self.tau
-#
-#  def _target_function_original(self, y, yd, ydd, goal, start, tau, s=0):
-#    return ((-1 * self.k_gain * (goal - y) + self.d_gain * yd + tau * ydd) / (goal - start))
+    # set the correct transformation and ftarget functions
+    if improved_version:
+      self._transformation_func = self._transformation_func_improved
+      self._ftarget_func = self._ftarget_func_improved
+    else:
+      self._transformation_func = self._transformation_func_original
+      self._ftarget_func = self._ftarget_func_original
+  
+  # original formulation
+  @staticmethod
+  def _transformation_func_original(k_gain, d_gain, x, raw_xd, start, goal, tau, f, s):
+    return (k_gain * (goal - x) - d_gain * raw_xd + (goal - start) * f) / tau
+  
+  @staticmethod
+  def _ftarget_func_original(k_gain, d_gain, y, yd, ydd, goal, start, tau, s):
+    return ((-1 * k_gain * (goal - y) + d_gain * yd + tau * ydd) / (goal - start))
 
+  # improved version of formulation
+  @staticmethod
+  def _transformation_func_improved(k_gain, d_gain, x, raw_xd, start, goal, tau, f, s):
+    #return (k_gain * (goal - x) - d_gain * raw_xd + k_gain * (goal - start) * s + k_gain * f) / tau
+    return (k_gain * (goal - x) - d_gain * raw_xd - k_gain * (goal - start) * s + k_gain * f) / tau
+  
+  @staticmethod
+  def _ftarget_func_improved(k_gain, d_gain, y, yd, ydd, goal, start, tau, s):
+    #return ((tau * ydd - d_gain * yd) / k_gain ) + (goal - y) - ((goal - start) * s)
+    return ((tau**2 * ydd + d_gain * yd * tau) / k_gain ) - (goal - y) + ((goal - start) * s)
+
+
+  # predict f
   def predict_f(self, x):
     
     # if nothing is learned we assume f=0.0
@@ -165,14 +180,15 @@ class DiscreteDMP:
     ##### compute values of target function
     
     # the target function (transformation system solved for f, and plugged in y for x)
-    ft = lambda y, yd, ydd: ((-(self.k_gain) * (goal - y) + self.d_gain * yd + tau * ydd) / (goal - start))
+    #ft = lambda y, yd, ydd, s: ((-(self.k_gain) * (goal - y) + self.d_gain * yd + tau * ydd) / (goal - start))
+    ft = lambda y, yd, ydd, s: self._ftarget_func(self.k_gain, self.d_gain, y, yd, ydd, goal, start, tau, s)
     
     # evaluate function to get the target values for given training data
     target_function_ouput = []
     for i, d in enumerate(trajectory):
       # compute f_target(y, yd, ydd) * s
       #print "s ", target_function_input[i], "y ", d[0], "yd ", d[1], "ydd", d[2], " ft:", ft(d[0], d[1], d[2])
-      target_function_ouput.append(ft(d[0], d[1], d[2]))
+      target_function_ouput.append(ft(d[0], d[1], d[2], target_function_input[i]))
     
     return target_function_input, np.asarray(target_function_ouput)
   
@@ -221,8 +237,9 @@ class DiscreteDMP:
     
     if isinstance(sample_trajectory[0], float):
       # calculate yd and ydd if sample_trajectory does not contain it
+      print "automatic derivation of yd and ydd"
       sample_trajectory = self.compute_derivatives(sample_trajectory, frequency)
-      #raise NotImplementedError("automatic derivation of yd and ydd not yet implemented!")
+      
     
     if len(sample_trajectory[0]) != 3:
       raise Exception("malformed trajectory, has to be a list with 3-tuples [(1,2,3),(4,5,6)]")
@@ -276,7 +293,8 @@ class DiscreteDMP:
     
     
     # calculate xdd (vd) according to the transformation system equation 1
-    self.xdd = (self.k_gain * (self.goal - self.x) - self.d_gain * self._raw_xd + (self.goal - self.start) * self.f) / self.tau
+    #self.xdd = (self.k_gain * (self.goal - self.x) - self.d_gain * self._raw_xd + (self.goal - self.start) * self.f) / self.tau
+    self.xdd = self._transformation_func(self.k_gain, self.d_gain, self.x, self._raw_xd, self.start, self.goal, self.tau, self.f, self.s) 
 
     # calculate xd using the raw_xd (scale by tau)
     self.xd = (self._raw_xd / self.tau)
