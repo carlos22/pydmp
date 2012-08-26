@@ -30,6 +30,8 @@ class LWR(object):
     # slopes of the linear models
     self.slopes = None
     
+    self.activation = activation
+    
     # initialize centers and widths (which is done at prediction time in lazy-lwr)    
     if exponentially_spaced:
       # exponentially_spaced kernels (set centers and widths)
@@ -93,7 +95,7 @@ class LWR(object):
     # convert input to matrix_like arrays (row vectors)
     x_input_vec = x_input_vec.reshape(len(x_input_vec), 1)
     y_target_vec = y_target_vec.reshape(len(y_target_vec), 1)
-        
+    
     tmp_matrix_a = np.dot(np.square(x_input_vec), np.ones((1, self.n_rfs))) 
     
     tmp_matrix_a = (tmp_matrix_a * basis_function_matrix)
@@ -150,9 +152,32 @@ class LWR(object):
         
       ax.plot(kernel_x, kernel_y)
 
-  def plot_linear_models(self):
-    #TODO: implement
-    pass
+  def plot_linear_models(self, ax):
+    # TODO: only seems to work with equally spaced kernels (why?)
+    eval_kernel_vec = np.vectorize(self._evaluate_kernel)
+
+    for i, t in enumerate(self.get_thetas()):
+      
+      xvals = np.arange(start=0.0, stop=1.0, step=0.001)
+      values = eval_kernel_vec(xvals, i)
+      
+      start, end = None, None
+      for k, v in enumerate(values):
+        if start == None and v >= self.activation:
+          start = k
+        if start != None and v < self.activation:
+          end = k
+          break
+      
+      #print i, "start: ", start, " end: ", end
+      xpart = xvals[start:end]
+      
+      ax.axvline(x=xpart[0], color='lightgrey', linestyle='dashed')
+      
+      ax.plot(xpart, xpart * t)
+      
+      
+      #ax.axvline(x=float(xpart[-1]))
 
 # some basic tests
 if __name__ == '__main__':
@@ -192,17 +217,22 @@ if __name__ == '__main__':
   # ----- PLOT
   fig = plt.figure()
   
-  # plot kernels
-  ax1 = fig.add_subplot(211)
-  lwr.plot_kernels(ax1)
+
+  ax2 = fig.add_subplot(211)
   
-  ax2 = fig.add_subplot(212)
   
   # plot testfunc
-  ax2.plot(test_x, test_y, 'o')
+  ax2.plot(test_x, test_y, 'bo')
   
   # plot prediction
   ax2.plot(test_xq, test_ypredicted, 'rx')
+
+  lwr.plot_linear_models(ax2)
+  
+  # plot kernels
+  ax1 = fig.add_subplot(212)
+  lwr.plot_kernels(ax1)
+  
   
   # show plot
   plt.show()

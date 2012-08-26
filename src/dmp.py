@@ -94,12 +94,13 @@ class DiscreteDMP:
   # improved version of formulation
   @staticmethod
   def _transformation_func_improved(k_gain, d_gain, x, raw_xd, start, goal, tau, f, s):
-    #return (k_gain * (goal - x) - d_gain * raw_xd + k_gain * (goal - start) * s + k_gain * f) / tau
     return (k_gain * (goal - x) - d_gain * raw_xd - k_gain * (goal - start) * s + k_gain * f) / tau
   
   @staticmethod
   def _ftarget_func_improved(k_gain, d_gain, y, yd, ydd, goal, start, tau, s):
+    # published formula
     #return ((tau * ydd - d_gain * yd) / k_gain ) + (goal - y) - ((goal - start) * s)
+    # version from dmp_lib/transformation_systm.cpp
     return ((tau**2 * ydd + d_gain * yd * tau) / k_gain ) - (goal - y) + ((goal - start) * s)
 
 
