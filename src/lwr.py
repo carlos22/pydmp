@@ -85,11 +85,16 @@ class LWR(object):
   def learn2(self, x_input_vec, y_target_vec):
     assert len(x_input_vec) == len(y_target_vec)
     
-    x_input_vec = np.asarray(x_input_vec)
+    # add constant 1
+    x_vec = [[1.0,x] for x in x_input_vec]
+
+    x_vec = np.asarray(x_vec)
     y_target_vec = np.asarray(y_target_vec)
     
-    # calculate offsets
-    
+#    # calculate offsets
+#    for n in range(self.n_rfs):
+#      W = np.diag(np.diag(self._generate_basis_function_mat(x_input_vec)))
+      
     
   
   def learn(self, x_input_vec, y_target_vec):
