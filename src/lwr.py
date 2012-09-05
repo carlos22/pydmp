@@ -7,6 +7,7 @@ Ported from C++ lib_lwr; could be improved with some some vectorization
 '''
 import numpy as np
 import math
+from numpy import linalg as LA
 
 class LWR(object):
   '''
@@ -86,14 +87,25 @@ class LWR(object):
     assert len(x_input_vec) == len(y_target_vec)
     
     # add constant 1
-    x_vec = [[1.0,x] for x in x_input_vec]
+    x_vec = [np.asarray([1.0,x]).T for x in x_input_vec]
 
-    x_vec = np.asarray(x_vec)
+    # matrix with all x_i as cols
+    X = np.asarray(x_vec).T
     y_target_vec = np.asarray(y_target_vec)
+
+    
+    W = np.zeros_like(X.T)
+    np.fill_diagonal(W, 1.2)
+    print W
+    #W[ = np.exp(-1.0/ self.widths[idx] * (x-self.centers[idx])**2)
+
+    beta = LA.inv(X.T.dot(W).dot(X)).dot(X.T).dot(W).dot(y_target_vec)
+
+    print beta    
     
 #    # calculate offsets
 #    for n in range(self.n_rfs):
-#      W = np.diag(np.diag(self._generate_basis_function_mat(x_input_vec)))
+#      
       
     
   
@@ -219,7 +231,7 @@ if __name__ == '__main__':
   lwr = LWR(n_rfs=20, activation=0.7, cutoff=0.001, exponentially_spaced=False)
   
   # learn
-  lwr.learn(test_x, test_y)
+  lwr.learn2(test_x, test_y)
   
   # create query x values
   test_xq = np.arange(start=0.0, stop=stop, step=stop / num_query)
