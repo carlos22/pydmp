@@ -8,6 +8,7 @@ import math
 from dmp import DiscreteDMP
 from min_jerk import min_jerk_traj
 from plot_tools import plot_pos_vel_acc_trajectory
+from lr import LR
 
 def main():
   
@@ -29,7 +30,7 @@ def main():
 
   ####### learn DMP
   
-  dmp = DiscreteDMP(True)
+  dmp = DiscreteDMP(True, reg_model=LR())
   dmp.learn_batch(traj, traj_freq)
   
   

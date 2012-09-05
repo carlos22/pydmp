@@ -30,6 +30,8 @@ class LWR(object):
     # slopes of the linear models
     self.slopes = None
     
+    self.offsets = None
+    
     self.activation = activation
     
     # initialize centers and widths (which is done at prediction time in lazy-lwr)    
@@ -79,6 +81,16 @@ class LWR(object):
     '''
     return math.exp(-(1.0 / self.widths[center_idx]) * pow(x_input - self.centers[center_idx], 2))
 
+
+  def learn2(self, x_input_vec, y_target_vec):
+    assert len(x_input_vec) == len(y_target_vec)
+    
+    x_input_vec = np.asarray(x_input_vec)
+    y_target_vec = np.asarray(y_target_vec)
+    
+    # calculate offsets
+    
+    
   
   def learn(self, x_input_vec, y_target_vec):
     # array or matrix? -> http://www.scipy.org/NumPy_for_Matlab_Users/#head-e9a492daa18afcd86e84e07cd2824a9b1b651935
@@ -152,8 +164,8 @@ class LWR(object):
         
       ax.plot(kernel_x, kernel_y)
 
+
   def plot_linear_models(self, ax):
-    # TODO: only seems to work with equally spaced kernels (why?)
     eval_kernel_vec = np.vectorize(self._evaluate_kernel)
 
     for i, t in enumerate(self.get_thetas()):
@@ -174,7 +186,7 @@ class LWR(object):
       
       ax.axvline(x=xpart[0], color='lightgrey', linestyle='dashed')
       
-      ax.plot(xpart, xpart * t)
+      ax.plot(xpart, t* xpart)
       
       
       #ax.axvline(x=float(xpart[-1]))
@@ -188,11 +200,14 @@ if __name__ == '__main__':
   num_learn = 1000
   num_query = 2000
   
-  # test simple LWR and plot it
-  testfunc = lambda x:-pow(x - 0.5, 2)
-  testfunc_vec = np.vectorize(testfunc)
+  stop = 1.0
   
-  test_x = np.arange(start=0.0, stop=1.0, step=1.0 / num_learn)
+  # test simple LWR and plot it
+  #testfunc = lambda x:-pow(x - 0.5, 2)
+  #testfunc_vec = np.vectorize(testfunc)
+  testfunc_vec = lambda x: x*np.sin(x*10)
+  
+  test_x = np.arange(start=0.0, stop=stop, step=stop / num_learn)
   test_y = testfunc_vec(test_x)
   
   # create LWR Model
@@ -202,7 +217,7 @@ if __name__ == '__main__':
   lwr.learn(test_x, test_y)
   
   # create query x values
-  test_xq = np.arange(start=0.0, stop=1.0, step=1.0 / num_query)
+  test_xq = np.arange(start=0.0, stop=stop, step=stop / num_query)
   test_ypredicted = []
 
   # calc prediction

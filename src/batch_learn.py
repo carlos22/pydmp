@@ -7,6 +7,8 @@ import numpy as np
 import json
 from dmp import DiscreteDMP
 
+from lr import LR
+
 def main():
   
   # duration
@@ -19,7 +21,7 @@ def main():
   delta_t = 0.001
   
   # load position trajectory
-  traj_pos = json.load(open("traj_full.json", 'r'))["x"][2000:8000][::6] #[5000:8000][::3]
+  traj_pos = json.load(open("traj_full.json", 'r'))["x"]#[2000:8000][::6] #[5000:8000][::3]
   
   # rest start and goal position out of trajectory
   start = traj_pos[0]
@@ -32,15 +34,13 @@ def main():
 
   ####### learn DMP
    
-  dmp = DiscreteDMP(True)
-  dmp.use_ft = True
+  dmp = DiscreteDMP(True, reg_model=LR(activation=0.1, exponentially_spaced=True, n_rfs=20))
+  #dmp.use_ft = True
   dmp.learn_batch(traj, traj_freq)
   
   
-  dmp_adapt = DiscreteDMP(True)
-  dmp_adapt.use_ft = True
-  dmp_adapt.learn_batch(traj, traj_freq)
-  
+  dmp_adapt = DiscreteDMP(True, reg_model=dmp.lwr_model) #copy.deepcopy(dmp.lwr_model))
+  dmp_adapt._is_learned = True  
   
   ####### learn DMP
   
@@ -107,6 +107,25 @@ def main():
   fig.tight_layout()
   
   plt.show()
+#  
+  fig2 = plt.figure('lwr', figsize=(6, 4))
+#  
+  ax_ft = fig2.add_subplot(211)
+  
+  ax_ft.plot(dmp.target_function_input, dmp.target_function_ouput, linewidth=2, label=r'$f_{target}(s)$')
+  ax_ft.plot(dmp.target_function_input, dmp.target_function_predicted, '--', linewidth=2, label=r'$f_{predicted}(s)$') #dashes=(3, 3)
+ 
+  plt.show()
+  
+  
+#  ax2 = fig2.add_subplot(212)
+#  
+#  dmp.lwr_model.plot_kernels(ax1)
+#  
+#  #ax2.plot(plot_time, np.asarray(traj)[:, 0], label='reproduction')
+#  dmp.lwr_model.plot_linear_models(ax2)
+#  print dmp.lwr_model.get_thetas()
+# 
   
   
   

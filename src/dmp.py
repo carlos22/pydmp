@@ -9,7 +9,7 @@ from lwr import LWR
 
 class DiscreteDMP:
 
-  def __init__(self, improved_version=False):
+  def __init__(self, improved_version=False, reg_model=None):
     
     ## time constants choosen for critical damping
     
@@ -65,7 +65,12 @@ class DiscreteDMP:
     self.use_ft = False
 
     # create LWR model and set parameters
-    self.lwr_model = LWR(activation=0.1, exponentially_spaced=True, n_rfs=20)
+    if not reg_model:
+      # default regression model
+      self.lwr_model = LWR(activation=0.1, exponentially_spaced=True, n_rfs=20)
+    else:
+      # custom regression model
+      self.lwr_model = reg_model
             
     # Canonical System
     self.s = 1.0 # canonical system is starting with 1.0
@@ -73,6 +78,8 @@ class DiscreteDMP:
         
     # is the DMP initialized?
     self._initialized = False
+    
+    self._is_learned = False
     
     # set the correct transformation and ftarget functions
     if improved_version:
@@ -108,7 +115,8 @@ class DiscreteDMP:
   def predict_f(self, x):
     
     # if nothing is learned we assume f=0.0
-    if self.target_function_input == None:
+    if not self._is_learned:
+      print "WARNING: NO TARGET FUNCTION LEARNED assuming f = 0.0"
       return 0.0
     
     #return self.lwr_model.predict(np.asarray([x]))[0]
@@ -128,6 +136,15 @@ class DiscreteDMP:
     self.tau = duration
     
     self._initialized = True
+    
+  def reset(self):
+    self.x = 0
+    self.xd = 0
+    self.xdd = 0
+    self._raw_xd = 0
+    self.f = 0
+    self.s = 1.0 
+    self.s_time = 0.0
 
   def _create_training_set(self, trajectory, frequency):
     '''
@@ -264,11 +281,15 @@ class DiscreteDMP:
 #      #print "value", outM[i]
 #      self.lwr_model.update(inM[i], outM[i])
 
+    # 
+    self._is_learned = True
+
     # debugging: compute learned ft(x)
     self.target_function_predicted = []
     for x in target_function_input:
       self.target_function_predicted.append(self.predict_f(x))      
       
+    
       
 
   def run_step(self):
