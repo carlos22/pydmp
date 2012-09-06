@@ -3,7 +3,7 @@ Locally Weighted Regression (Eager)
 
 @author: Karl Glatz
 
-Ported from C++ lib_lwr; could be improved with some some vectorization
+Ported from C++ lib_lwr; added offset calculation
 '''
 import numpy as np
 import math
@@ -12,7 +12,7 @@ from numpy import linalg as LA
 class LWR(object):
   '''
     Eager Locally Weighted Regression for one dimension.
-    Eager means there is no data stored, the local models are fit once to a fixed set of basis functions.
+    Eager means there is no data stored, the local models are fitted once to a fixed set of basis functions.
   '''
 
   def __init__(self, n_rfs=20, activation=0.1, cutoff=0.001, exponentially_spaced=True):
@@ -28,12 +28,17 @@ class LWR(object):
     # centers of the kernels
     self.centers = np.zeros((self.n_rfs, 1))
     
-    # slopes of the linear models
-    self.slopes = None
+    # slopes of the linear models [a in y = ax + b]
+    self.slopes = [None]*self.n_rfs
     
-    self.offsets = None
+    # offsets b in y = ax + b
+    self.offsets = [0]*self.n_rfs
     
     self.activation = activation
+    
+    # default learn method
+    self.learn = self.learn_with_offset
+    
     
     # initialize centers and widths (which is done at prediction time in lazy-lwr)    
     if exponentially_spaced:
@@ -60,6 +65,7 @@ class LWR(object):
       width = -pow(diff / 2.0, 2) / math.log(activation)
       for i in range(self.n_rfs):
         self.widths[i] = width;
+    
       
 
   def _generate_basis_function_mat(self, input_vec):
@@ -83,33 +89,34 @@ class LWR(object):
     return math.exp(-(1.0 / self.widths[center_idx]) * pow(x_input - self.centers[center_idx], 2))
 
 
-  def learn2(self, x_input_vec, y_target_vec):
+  def learn_with_offset(self, x_input_vec, y_target_vec):
     assert len(x_input_vec) == len(y_target_vec)
+    data_len = len(x_input_vec)
     
     # add constant 1
     x_vec = [np.asarray([1.0,x]).T for x in x_input_vec]
 
     # matrix with all x_i as cols
-    X = np.asarray(x_vec).T
+    X = np.asarray(x_vec)
     y_target_vec = np.asarray(y_target_vec)
 
     
-    W = np.zeros_like(X.T)
-    np.fill_diagonal(W, 1.2)
-    print W
-    #W[ = np.exp(-1.0/ self.widths[idx] * (x-self.centers[idx])**2)
-
-    beta = LA.inv(X.T.dot(W).dot(X)).dot(X.T).dot(W).dot(y_target_vec)
-
-    print beta    
-    
-#    # calculate offsets
-#    for n in range(self.n_rfs):
-#      
+    # calculate n_rfs betas
+    for idx in range(self.n_rfs):
       
-    
+      # create diagonal weight matrix 
+      W = np.zeros((data_len,data_len))
+      for i, x in enumerate(x_input_vec):
+        W[i,i] = self._evaluate_kernel(x, idx)
+        
+        
+      beta = LA.inv(X.T.dot(W).dot(X)).dot(X.T).dot(W).dot(y_target_vec)
+      
+      self.offsets[idx] = beta[0]
+      self.slopes[idx] = beta[1]
+
   
-  def learn(self, x_input_vec, y_target_vec):
+  def learn_without_offset(self, x_input_vec, y_target_vec):
     # array or matrix? -> http://www.scipy.org/NumPy_for_Matlab_Users/#head-e9a492daa18afcd86e84e07cd2824a9b1b651935
     
     assert len(x_input_vec) == len(y_target_vec)
@@ -154,7 +161,7 @@ class LWR(object):
     sxtd = 0.0
     for i in range(self.n_rfs):
       psi = self._evaluate_kernel(x_query, i)
-      sxtd += psi * self.slopes[i] * x_query
+      sxtd += psi * (self.slopes[i] * x_query + self.offsets[i])
       sx += psi
       
     # TODO: thinkg about this...
@@ -203,7 +210,7 @@ class LWR(object):
       
       ax.axvline(x=xpart[0], color='lightgrey', linestyle='dashed')
       
-      ax.plot(xpart, t* xpart)
+      ax.plot(xpart, t* xpart + self.offsets[i])
       
       
       #ax.axvline(x=float(xpart[-1]))
@@ -228,10 +235,10 @@ if __name__ == '__main__':
   test_y = testfunc_vec(test_x)
   
   # create LWR Model
-  lwr = LWR(n_rfs=20, activation=0.7, cutoff=0.001, exponentially_spaced=False)
+  lwr = LWR(n_rfs=10, activation=0.7, cutoff=0.001, exponentially_spaced=False)
   
   # learn
-  lwr.learn2(test_x, test_y)
+  lwr.learn(test_x, test_y)
   
   # create query x values
   test_xq = np.arange(start=0.0, stop=stop, step=stop / num_query)
