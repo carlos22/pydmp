@@ -15,7 +15,7 @@ class LWR(object):
     Eager means there is no data stored, the local models are fitted once to a fixed set of basis functions.
   '''
 
-  def __init__(self, n_rfs=20, activation=0.1, cutoff=0.001, exponentially_spaced=True):
+  def __init__(self, n_rfs=20, activation=0.1, cutoff=0.001, exponentially_spaced=True, use_offset=False):
     '''
     Constructor
     '''
@@ -32,12 +32,15 @@ class LWR(object):
     self.slopes = [None]*self.n_rfs
     
     # offsets b in y = ax + b
-    self.offsets = [0]*self.n_rfs
+    self.offsets = [0.0]*self.n_rfs
     
     self.activation = activation
     
     # default learn method
-    self.learn = self.learn_with_offset
+    if use_offset:
+      self.learn = self.learn_with_offset
+    else:
+      self.learn = self.learn_without_offset
     
     
     # initialize centers and widths (which is done at prediction time in lazy-lwr)    
@@ -238,7 +241,7 @@ if __name__ == '__main__':
   lwr = LWR(n_rfs=10, activation=0.7, cutoff=0.001, exponentially_spaced=False)
   
   # learn
-  lwr.learn(test_x, test_y)
+  lwr.learn_with_offset(test_x, test_y)
   
   # create query x values
   test_xq = np.arange(start=0.0, stop=stop, step=stop / num_query)

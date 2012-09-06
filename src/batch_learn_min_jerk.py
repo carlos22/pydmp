@@ -8,7 +8,8 @@ import math
 from dmp import DiscreteDMP
 from min_jerk import min_jerk_traj
 from plot_tools import plot_pos_vel_acc_trajectory
-from lr import LR
+from lwr import LWR
+import numpy as np
 
 def main():
   
@@ -30,14 +31,14 @@ def main():
 
   ####### learn DMP
   
-  dmp = DiscreteDMP(True, reg_model=LR())
+  dmp = DiscreteDMP(False, LWR(activation=0.3, exponentially_spaced=False, n_rfs=8, use_offset=True))
   dmp.learn_batch(traj, traj_freq)
   
   
   ####### learn DMP
   
   # setup DMP with start and goal
-  dmp.setup(start, goal, duration)
+  dmp.setup(start+0.4, goal+0.2, duration)
   
   # trajectory
   reproduced_traj = []
@@ -47,7 +48,7 @@ def main():
   s_time = []
   
   # run steps (for each point of the sample trajectory)
-  for x in xrange(int(dmp.tau / dmp.delta_t)):
+  for _ in xrange(int(dmp.tau / dmp.delta_t)):
     # change goal while execution
     #if x == 500:
     #  dmp.goal = 4.0
@@ -65,13 +66,25 @@ def main():
 
   ####### PLOTTING
 
+  fig_pos = plt.figure('dmp batch learn from min jerk', figsize=(7, 5))
+  ax_pos2 = fig_pos.add_subplot(111)
+  plot_time = np.arange(len(traj)) * delta_t
+
+
+  ax_pos2.plot(plot_time, np.asarray(traj)[:, 0], label='demonstration')
+  ax_pos2.plot(plot_time, np.asarray(reproduced_traj)[:, 0], label='adapted reproduction', linestyle='dashed')
+  
+  ax_pos2.legend(loc='upper left')
+
+  plt.show()
   
   # create figure
-  fig = plt.figure('dmp batch learn from min jerk', figsize=(14, 4.6))
+  fig = plt.figure('dmp batch learn from min jerk', figsize=(16, 4.6))
   # create axes
   ax_pos = fig.add_subplot(131)
   ax_vel = fig.add_subplot(132)
   ax_acc = fig.add_subplot(133)
+  
     
   # plot on the axes
   plot_pos_vel_acc_trajectory((ax_pos, ax_vel, ax_acc), traj, delta_t, label='demonstration')
@@ -81,7 +94,7 @@ def main():
   
   plt.show()
   
-  fig = plt.figure('ftarget', figsize=(14, 4.6))
+  fig = plt.figure('ftarget', figsize=(16, 4.6))
   
   # plot  ftarget (real and predicted)
   ax_ft = fig.add_subplot(131)
@@ -106,13 +119,16 @@ def main():
 
   # weights of kernels (w)
   ax_w = fig.add_subplot(133)
-  lwr_wights = dmp.lwr_model.get_thetas()
-  ax_w.bar(range(len(lwr_wights)), lwr_wights, width=0.3)
-  ax_w.set_xlabel('$w_i$')
-  ax_w.set_ylabel('')
+  ax_w.set_xlabel(r'$s$')
+  ax_w.set_ylabel(r'$f(s)$')
+  dmp.lwr_model.plot_linear_models(ax_w)
+#  lwr_wights = dmp.lwr_model.get_thetas()
+#  ax_w.bar(range(len(lwr_wights)), lwr_wights, width=0.3)
+#  ax_w.set_xlabel('$w_i$')
+#  ax_w.set_ylabel('')
 
 
-  #fig.tight_layout()
+  fig.tight_layout()
   
   plt.show()  
   

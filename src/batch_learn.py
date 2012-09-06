@@ -7,7 +7,7 @@ import numpy as np
 import json
 from dmp import DiscreteDMP
 
-from lr import LR
+from lwr import LWR
 
 def main():
   
@@ -21,7 +21,7 @@ def main():
   delta_t = 0.001
   
   # load position trajectory
-  traj_pos = json.load(open("traj_full.json", 'r'))["x"]#[2000:8000][::6] #[5000:8000][::3]
+  traj_pos = json.load(open("traj_full.json", 'r'))["x"][2000:8000][::6] #[5000:8000][::3]
   
   # rest start and goal position out of trajectory
   start = traj_pos[0]
@@ -34,7 +34,7 @@ def main():
 
   ####### learn DMP
    
-  dmp = DiscreteDMP(True, reg_model=LR(activation=0.1, exponentially_spaced=True, n_rfs=20))
+  dmp = DiscreteDMP(True, reg_model=LWR(activation=0.1, exponentially_spaced=True, n_rfs=20))
   #dmp.use_ft = True
   dmp.learn_batch(traj, traj_freq)
   
@@ -61,7 +61,7 @@ def main():
   s_time = []
   
   # run steps (for each point of the sample trajectory)
-  for x in xrange(int(dmp.tau / dmp.delta_t)):
+  for _ in xrange(int(dmp.tau / dmp.delta_t)):
     # change goal while execution
     #if x == 500:
     #  dmp.goal = 4.0
@@ -92,7 +92,8 @@ def main():
   # plot on the axes
   #ax_pos.plot(np.arange(0,1,0.001), traj_pos)
   plot_time = np.arange(len(traj)) * delta_t
-  
+
+
   ax_pos.plot(plot_time, np.asarray(traj)[:, 0], label='demonstration')
   ax_pos.plot(plot_time, np.asarray(traj_reproduced)[:, 0], label='reproduction', linestyle='dashed')
   ax_pos.plot(plot_time, np.asarray(traj_adapted)[:, 0], label='adapted (%+0.2f)' % adapt_offset)
