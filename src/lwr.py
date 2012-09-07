@@ -224,7 +224,7 @@ if __name__ == '__main__':
   # import pylab here, so the module does not depend on it!!
   import pylab as plt
   
-  num_learn = 1000
+  num_learn = 100
   num_query = 2000
   
   stop = 1.0
@@ -232,7 +232,7 @@ if __name__ == '__main__':
   # test simple LWR and plot it
   #testfunc = lambda x:-pow(x - 0.5, 2)
   #testfunc_vec = np.vectorize(testfunc)
-  testfunc_vec = lambda x: x*np.sin(x*10)
+  testfunc_vec = lambda x: x*np.sin(x*10) + np.random.randn(len(x))/10
   
   test_x = np.arange(start=0.0, stop=stop, step=stop / num_learn)
   test_y = testfunc_vec(test_x)
@@ -257,24 +257,41 @@ if __name__ == '__main__':
   
   
   # ----- PLOT
-  fig = plt.figure()
+  fig = plt.figure('lwr', figsize=(12, 10))
   
 
-  ax2 = fig.add_subplot(211)
+  ax1 = fig.add_subplot(311)
   
   
   # plot testfunc
-  ax2.plot(test_x, test_y, 'bo')
+  ax1.plot(test_x, test_y, 'o', color='gray', label="training data")
   
   # plot prediction
-  ax2.plot(test_xq, test_ypredicted, 'rx')
+  ax1.plot(test_xq, test_ypredicted, 'r', linewidth=2, label="prediction")
 
-  lwr.plot_linear_models(ax2)
+  plt.setp(ax1.get_xticklabels(), visible=False) 
+
+  ax1.set_ylabel("$f(x)$")
+  
+  ax1.legend(loc='upper left')
+
+  # linear models
+  ax_lm = fig.add_subplot(312, sharex = ax1, sharey = ax1)  
+  
+  ax_lm.set_ylabel("$f(x)$")
+  plt.setp(ax_lm.get_xticklabels(), visible=False) 
+  
+  lwr.plot_linear_models(ax_lm)
+  
   
   # plot kernels
-  ax1 = fig.add_subplot(212)
-  lwr.plot_kernels(ax1)
+  ax_k = fig.add_subplot(313, sharex = ax1)
+  lwr.plot_kernels(ax_k)
+  ax_k.set_ylabel("$f(x)$")
+  ax_k.set_xlabel("$x$")
   
+  
+  fig.tight_layout()
   
   # show plot
   plt.show()
